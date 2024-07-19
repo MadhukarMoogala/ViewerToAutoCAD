@@ -1,6 +1,11 @@
 # Importing Markup geometries from APS Viewer to AutoCAD 2D Drawing
 
-The objective of this project is to understand how to import the custom graphics drawn on APS Viewer back to AutoCAD base drawing, the scope of this work is limited to AutoCAD 2D drawings.
+The objective of this project is to understand how to import custom graphics drawn on APS Viewer back to the AutoCAD base drawing. The scope of this work is limited to AutoCAD 2D drawings. This workflow can be automated using APS Design Automation. However, the project does not focus on the DA part at the moment. The essential bells and whistles required to create the Drawing Review System are provided.
+
+In a nutshell, you need a 
+- APS Viewer for viewing the drawing in a cloud-based environment.
+- A Markup extension to annotate the drawing in the Viewer.
+- APS Design Automation to add these markup annotations as AutoCAD entities onto the actual Master drawing (.dwg).
 
 #### Terminology
 
