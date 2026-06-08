@@ -42,15 +42,17 @@ namespace SimpleViewer.Controllers
             public IFormFile? File { get; set; }
         }
         [HttpPost()]
-        public async Task<BucketObject> UploadAndTranslateModel([FromForm] UploadModelForm form)
+        public async Task<BucketObject> UploadAndTranslateModel([FromForm] UploadModelForm form, [FromQuery] bool pdf = true)
         {
             if(form.File == null)
                 throw new Exception("No file uploaded");
             using var stream = new MemoryStream();
             await form.File.CopyToAsync(stream);
             stream.Position = 0;
-            var obj = await _aps.UploadModel(form.File.FileName, stream);
-            var job = await _aps.TranslateModel(obj.ObjectId, form.Entrypoint ?? string.Empty);
+            // Prefix object key so pdf vs legacy translations get separate URNs
+            var objectName = (pdf ? "pdf_" : "svf_") + form.File.FileName;
+            var obj = await _aps.UploadModel(objectName, stream);
+            var job = await _aps.TranslateModel(obj.ObjectId, form.Entrypoint ?? string.Empty, usePdfPipeline: pdf);
             return new BucketObject(obj.ObjectKey, job.Urn);
         }
     }

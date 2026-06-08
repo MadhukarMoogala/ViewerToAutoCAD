@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="https://cdn.autodesk.io/favicon.ico">
+    <link rel="stylesheet" href="/main.css">
+    <title>DA Admin Setup</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 60px auto; padding: 0 20px; }
+        h1 { font-size: 1.4em; }
+        .step { margin: 24px 0; padding: 16px; border: 1px solid #ddd; border-radius: 6px; }
+        .step h2 { font-size: 1em; margin: 0 0 8px; }
+        .step p  { font-size: 0.9em; color: #555; margin: 0 0 12px; }
+        button   { padding: 8px 18px; cursor: pointer; }
+        #status  { margin-top: 16px; padding: 10px; border-radius: 4px; display: none; }
+        .ok  { background: #d4edda; color: #155724; }
+        .err { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>Design Automation — One-Time Setup</h1>
+    <p>Run this page <strong>once</strong> to deploy the TransformPoint appbundle and register
+       the <em>ImportMarkups</em> and <em>PlotToPDF</em> activities in your APS account.
+       Users never need to visit this page.</p>
+
+    <div class="step">
+        <h2>Step 1 — Build the plugin</h2>
+        <p>In the repo, run:<br>
+           <code>dotnet build TransformPoint/TransformPoint.csproj -c Release</code><br>
+           The bundle zip will be at:<br>
+           <code>TransformPoint/bin/Release/net8.0-windows/TransformPoint.bundle.zip</code>
+        </p>
+    </div>
+
+    <div class="step">
+        <h2>Step 2 — Upload bundle &amp; register activities</h2>
+        <p>Select the <code>TransformPoint.bundle.zip</code> produced by the build above.
+           This deploys it to APS Design Automation and registers both activities.</p>
+        <input type="file" id="bundle-input" accept=".zip" style="display:none">
+        <button id="setup-btn">Select bundle zip &amp; Deploy</button>
+        <div id="status"></div>
+    </div>
+
+    <div class="step" style="border-color:#dc3545;">
+        <h2>⚠ Cleanup — Delete ALL DA resources</h2>
+        <p>Calls <code>DELETE /forgeapps/me</code> — wipes every bundle, activity, and alias
+           registered under this APS app. Use only during development to start fresh.
+           You must run Setup again afterward.</p>
+        <button id="cleanup-btn" style="background:#dc3545;color:#fff;border:none;">
+            Delete all DA resources
+        </button>
+    </div>
+
+    <script type="module">
+        const btn    = document.getElementById('setup-btn');
+        const input  = document.getElementById('bundle-input');
+        const status = document.getElementById('status');
+
+        btn.onclick = () => input.click();
+
+        input.onchange = async () => {
+            const file = input.files[0];
+            if (!file) return;
+            const data = new FormData();
+            data.append('bundleZip', file);
+            btn.disabled = true;
+            showStatus('Deploying… this may take 30–60 seconds.', '');
+            try {
+                const resp = await fetch('/api/da/setup', { method: 'POST', body: data });
+                if (!resp.ok) throw new Error(await resp.text());
+                const { message } = await resp.json();
+                showStatus(`✓ ${message}`, 'ok');
+            } catch (err) {
+                showStatus(`✗ ${err.message}`, 'err');
+                console.error(err);
+            } finally {
+                btn.disabled = false;
+                input.value = '';
+            }
+        };
+
+        function showStatus(msg, cls) {
+            status.textContent = msg;
+            status.className = cls;
+            status.style.display = 'block';
+        }
+
+        // Cleanup
+        document.getElementById('cleanup-btn').onclick = async () => {
+            if (!confirm('This will delete ALL DA bundles, activities, and aliases for this app. Continue?'))
+                return;
+            const cleanBtn = document.getElementById('cleanup-btn');
+            cleanBtn.disabled = true;
+            showStatus('Deleting all DA resources…', '');
+            try {
+                const resp = await fetch('/api/da/cleanup', { method: 'DELETE' });
+                if (!resp.ok) throw new Error(await resp.text());
+                const { message } = await resp.json();
+                showStatus(`✓ ${message}`, 'ok');
+            } catch (err) {
+                showStatus(`✗ ${err.message}`, 'err');
+                console.error(err);
+            } finally {
+                cleanBtn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>

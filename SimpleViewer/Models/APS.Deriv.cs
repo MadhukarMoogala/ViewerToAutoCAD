@@ -88,7 +88,7 @@ namespace SimpleViewer.Models
             var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(plainText);
             return System.Convert.ToBase64String(plainTextBytes).TrimEnd('=');
         }
-        public async Task<Job> TranslateModel(string objectId, string rootFilename)
+        public async Task<Job> TranslateModel(string objectId, string rootFilename, bool usePdfPipeline = true)
         {
             var token = await GetInternalToken();
             var api = new DerivativesApi();
@@ -98,7 +98,7 @@ namespace SimpleViewer.Models
                 JobPayloadItem.TypeEnum.Svf,
                 [JobPayloadItem.ViewsEnum._2d,
                 JobPayloadItem.ViewsEnum._3d],
-                new JobDwgPdfOutputPayloadAdvanced(views2D:JobDwgPdfOutputPayloadAdvanced.Views2DEnum.PDF))
+                usePdfPipeline ? new JobDwgPdfOutputPayloadAdvanced(views2D:JobDwgPdfOutputPayloadAdvanced.Views2DEnum.PDF) : null)
             };
             var payload = new JobPayload(
             new JobPayloadInput(Base64Encode(objectId)),

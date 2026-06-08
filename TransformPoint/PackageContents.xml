@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ApplicationPackage SchemaVersion="1.0" Version="1.0"
+  ProductCode="{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+  Name="TransformPoint"
+  Description="Import APS Viewer markups into AutoCAD DWG as polyline entities">
+  <CompanyDetails Name="Autodesk"/>
+  <RuntimeRequirements OS="Win64" Platform="AutoCAD" SeriesMin="R26.0" SeriesMax="R26.0"/>
+  <Components Description="Main Assembly">
+    <ComponentEntry AppName="TransformPoint"
+                    ModuleName="./Contents/TransformPoint.dll"
+                    LoadOnCommandInvocation="True"
+                    LoadOnAutoCADStartup="True">
+      <Commands GroupName="TransformPoint">
+        <Command Global="IMPORTMARKUPS" Local="IMPORTMARKUPS"/>
+        <Command Global="DRAWMARKUP" Local="DRAWMARKUP"/>
+      </Commands>
+    </ComponentEntry>
+  </Components>
+</ApplicationPackage>
