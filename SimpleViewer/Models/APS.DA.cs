@@ -51,6 +51,7 @@ namespace SimpleViewer.Models
         // ── Bundle deployment ─────────────────────────────────────────────────────
         public async Task DeployBundle(Stream bundleZip)
         {
+            _logger.LogInformation("[DA] Deploying TransformPoint bundle...");
             var token = await GetDaToken();
             using var http = DaHttp(token.AccessToken);
 
@@ -61,8 +62,11 @@ namespace SimpleViewer.Models
 
             var resp = await http.PostAsync($"{DA_BASE}/appbundles", Json(create));
             if (resp.StatusCode == HttpStatusCode.Conflict)
+            {
+                _logger.LogInformation("[DA] Bundle exists — creating new version");
                 resp = await http.PostAsync($"{DA_BASE}/appbundles/TransformPoint/versions",
                                             Json(update));
+            }
             resp.EnsureSuccessStatusCode();
 
             var result      = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
@@ -70,7 +74,7 @@ namespace SimpleViewer.Models
             var uploadParams = result.GetProperty("uploadParameters");
             var endpointUrl = uploadParams.GetProperty("endpointURL").GetString()!;
 
-            // Multipart POST to AWS S3
+            _logger.LogInformation("[DA] Uploading bundle zip to S3 (v{Version})...", version);
             using var form = new MultipartFormDataContent();
             foreach (var prop in uploadParams.GetProperty("formData").EnumerateObject())
                 form.Add(new StringContent(prop.Value.GetString()!), prop.Name);
@@ -80,11 +84,13 @@ namespace SimpleViewer.Models
             (await s3.PostAsync(endpointUrl, form)).EnsureSuccessStatusCode();
 
             await UpsertAlias(http, "appbundles/TransformPoint", version);
+            _logger.LogInformation("[DA] Bundle deployed — v{Version} alias=dev", version);
         }
 
         // ── Activities ────────────────────────────────────────────────────────────
         public async Task EnsureImportMarkupsActivity()
         {
+            _logger.LogInformation("[DA] Ensuring ImportMarkups activity...");
             var token    = await GetDaToken();
             var nickname = await GetNickname();
             using var http = DaHttp(token.AccessToken);
@@ -114,10 +120,12 @@ namespace SimpleViewer.Models
             };
 
             await UpsertActivity(http, "ImportMarkups", def);
+            _logger.LogInformation("[DA] ImportMarkups activity ready");
         }
 
         public async Task EnsurePlotToPdfActivity()
         {
+            _logger.LogInformation("[DA] Ensuring PlotToPDF activity...");
             var token = await GetDaToken();
             using var http = DaHttp(token.AccessToken);
 
@@ -146,6 +154,7 @@ namespace SimpleViewer.Models
             };
 
             await UpsertActivity(http, "PlotToPDF", def);
+            _logger.LogInformation("[DA] PlotToPDF activity ready");
         }
 
         // ── Workitem submission ───────────────────────────────────────────────────
@@ -192,6 +201,7 @@ namespace SimpleViewer.Models
             }
             var id = JsonDocument.Parse(await resp.Content.ReadAsStringAsync())
                 .RootElement.GetProperty("id").GetString()!;
+            _logger.LogInformation("[DA] ImportMarkups workitem submitted: {Id} → output={OutputKey}", id, outputKey);
             return (id, outputKey);
         }
 
@@ -220,6 +230,7 @@ namespace SimpleViewer.Models
             resp.EnsureSuccessStatusCode();
             var id = JsonDocument.Parse(await resp.Content.ReadAsStringAsync())
                 .RootElement.GetProperty("id").GetString()!;
+            _logger.LogInformation("[DA] PlotToPDF workitem submitted: {Id} → output={PdfKey}", id, pdfKey);
             return (id, pdfKey);
         }
 
@@ -232,6 +243,7 @@ namespace SimpleViewer.Models
             var json      = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
             var status    = json.GetProperty("status").GetString()!;
             var reportUrl = json.TryGetProperty("reportUrl", out var ru) ? ru.GetString() : null;
+            _logger.LogInformation("[DA] Workitem {Id} status: {Status}", workitemId, status);
             return new WorkitemStatus(status, ReportUrl: reportUrl);
         }
 

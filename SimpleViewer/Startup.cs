@@ -23,7 +23,9 @@ namespace SimpleViewer
             {
                 throw new ApplicationException("Missing required environment variables APS_CLIENT_ID or APS_CLIENT_SECRET or APS_BUCKET.");
             }
-            services.AddSingleton<APS>(new APS(clientID, clientSecret, bucket));
+            services.AddSingleton<APS>(sp =>
+                new APS(clientID, clientSecret, bucket,
+                        sp.GetRequiredService<ILogger<APS>>()));
         }
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

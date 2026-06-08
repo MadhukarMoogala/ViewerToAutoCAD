@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using SimpleViewer.Models;
 using System.Collections.Concurrent;
 using System.Text.Json;
@@ -7,7 +8,7 @@ namespace SimpleViewer.Controllers
 {
     [Route("api/da")]
     [ApiController]
-    public class DesignAutomationController(APS aps) : ControllerBase
+    public class DesignAutomationController(APS aps, ILogger<DesignAutomationController> logger) : ControllerBase
     {
         private static readonly ConcurrentDictionary<string, DaJob> _jobs = new();
 
@@ -23,6 +24,7 @@ namespace SimpleViewer.Controllers
         [HttpDelete("cleanup")]
         public async Task<IActionResult> Cleanup()
         {
+            logger.LogWarning("[DA] Cleanup requested — deleting all DA resources");
             await aps.CleanupAllDaResources();
             _jobs.Clear();
             return Ok(new { message = "All DA resources deleted. Run Setup DA to redeploy." });
@@ -36,10 +38,12 @@ namespace SimpleViewer.Controllers
             if (bundleZip == null || bundleZip.Length == 0)
                 return BadRequest("bundleZip file is required.");
 
+            logger.LogInformation("[DA] Setup started — bundle size: {Size} bytes", bundleZip.Length);
             await using var stream = bundleZip.OpenReadStream();
             await aps.DeployBundle(stream);
             await aps.EnsureImportMarkupsActivity();
             await aps.EnsurePlotToPdfActivity();
+            logger.LogInformation("[DA] Setup complete");
             return Ok(new { message = "Bundle and activities deployed." });
         }
 
@@ -54,8 +58,10 @@ namespace SimpleViewer.Controllers
                 return BadRequest("Body must contain 'urn' and 'markups'.");
 
             var urn = urnEl.GetString()!;
+            logger.LogInformation("[DA] Submitting ImportMarkups workitem for URN={Urn}", urn[..Math.Min(20, urn.Length)] + "…");
             var (wi1Id, outputKey) = await aps.SubmitImportMarkupsWorkitem(urn, markupsEl);
             _jobs[wi1Id] = new DaJob(wi1Id, outputKey);
+            logger.LogInformation("[DA] Job registered: {JobId}", wi1Id);
             return Ok(new { jobId = wi1Id });
         }
 
@@ -77,9 +83,13 @@ namespace SimpleViewer.Controllers
                     return Ok(new { status = "importing" });
 
                 if (wi1Status.Status == "failed")
+                {
+                    logger.LogError("[DA] ImportMarkups failed. Report: {Url}", wi1Status.ReportUrl);
                     return Ok(new { status = "failed", reportUrl = wi1Status.ReportUrl });
+                }
 
                 // wi1 succeeded — atomically claim the transition to plotting
+                logger.LogInformation("[DA] ImportMarkups succeeded — submitting PlotToPDF");
                 var pending = job with { Wi2Id = "pending" };
                 if (!_jobs.TryUpdate(jobId, pending, job))
                     return Ok(new { status = "plotting" }); // another request already claimed it
@@ -117,9 +127,13 @@ namespace SimpleViewer.Controllers
                 return Ok(new { status = "plotting" });
 
             if (wi2Status.Status == "failed")
+            {
+                logger.LogError("[DA] PlotToPDF failed. Report: {Url}", wi2Status.ReportUrl);
                 return Ok(new { status = "failed", reportUrl = wi2Status.ReportUrl });
+            }
 
             // Both workitems succeeded — return signed PDF download URL
+            logger.LogInformation("[DA] PlotToPDF succeeded — PDF ready: {Key}", job.PdfKey);
             var pdfUrl = await aps.GetPdfDownloadUrl(job.PdfKey!);
             return Ok(new { status = "success", pdfUrl });
         }
