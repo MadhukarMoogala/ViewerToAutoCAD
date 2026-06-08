@@ -90,6 +90,9 @@ namespace SimpleViewer.Models
         }
         public async Task<Job> TranslateModel(string objectId, string rootFilename, bool usePdfPipeline = true)
         {
+            var key = objectId[(objectId.LastIndexOf('/') + 1)..];
+            _logger.LogInformation("[Deriv] Translating {Key} (pipeline={Pipeline})",
+                key, usePdfPipeline ? "2dviews:pdf" : "legacy");
             var token = await GetInternalToken();
             var api = new DerivativesApi();
             api.Configuration.AccessToken = token.AccessToken;
@@ -109,6 +112,7 @@ namespace SimpleViewer.Models
                 payload.Input.CompressedUrn = true;
             }
             var job = (await api.TranslateAsync(payload)).ToObject<Job>();
+            _logger.LogInformation("[Deriv] Translation job accepted — URN={Urn}", (string)job.Urn);
             return job;
         }
         public async Task<TranslationStatus> GetTranslationStatus(string urn)
@@ -128,7 +132,12 @@ namespace SimpleViewer.Models
                 if (message.Type == Newtonsoft.Json.Linq.JTokenType.String)
                     messages.Add((string)message);
             }
-            return new TranslationStatus((string)json["status"], (string)json["progress"], messages);
+            var status = new TranslationStatus((string)json["status"], (string)json["progress"], messages);
+            if (status.Status != "inprogress")
+                _logger.LogInformation("[Deriv] Translation status={Status} progress={Progress}", status.Status, status.Progress);
+            if (messages.Any())
+                _logger.LogWarning("[Deriv] Translation errors: {Errors}", string.Join("; ", messages));
+            return status;
         }
     }
 }

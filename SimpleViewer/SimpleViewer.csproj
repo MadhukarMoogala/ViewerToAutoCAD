@@ -4,6 +4,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>AnyCPU;x64</Platforms>
+    <!-- RestSharp 108.x is pinned by Autodesk.Forge 1.9.9; upgrading breaks SDK at runtime.
+         Suppress until SDK is migrated to Autodesk.Authentication + Autodesk.OSS. -->
+    <NoWarn>$(NoWarn);NU1902</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Autodesk.Forge" Version="1.9.9" />

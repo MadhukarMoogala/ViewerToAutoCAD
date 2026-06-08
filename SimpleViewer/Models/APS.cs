@@ -9,6 +9,8 @@ namespace SimpleViewer.Models
         private readonly string _bucket;
         private readonly ILogger<APS> _logger;
 
+        public string BucketName => _bucket;
+
         public APS(string clientId, string clientSecret, string bucket, ILogger<APS> logger)
         {
             _clientId = clientId;

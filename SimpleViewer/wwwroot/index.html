@@ -3,25 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <link rel="icon" type="image/x-icon" href="https://cdn.autodesk.io/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.css">
     <link rel="stylesheet" href="/main.css">
-    <title>Autodesk Platform Services: Simple Viewer</title>
+    <title>ViewerToAutoCAD — APS</title>
 </head>
 <body>
-    <div id="header">
-        <img class="logo" src="https://cdn.autodesk.io/logo/black/stacked.png" alt="Autodesk Platform Services">
-        <span class="title">Simple Viewer</span>
-        <select name="models" id="models"></select>
-        <button id="upload" title="Upload New Model">Upload</button>
-        <button id="generate-pdf" title="Export markups to PDF via Design Automation">Generate PDF</button>
-        <!-- Hidden file input for model upload -->
-        <input style="display: none" type="file" id="input">
+<div id="app">
+
+    <!-- ── Header ─────────────────────────────────────────── -->
+    <header id="header">
+        <div class="hd-left">
+            <img class="logo" src="https://cdn.autodesk.io/logo/white/stacked.png" alt="APS">
+            <div class="hd-divider"></div>
+            <span class="app-name">Viewer<span class="app-name-acc">→</span>AutoCAD</span>
+        </div>
+        <div class="hd-right">
+            <a href="/admin.html" class="admin-link" title="DA Setup">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M4.93 19.07l1.41-1.41M19.07 19.07l-1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/>
+                </svg>
+                Admin
+            </a>
+        </div>
+    </header>
+
+    <!-- ── Main ───────────────────────────────────────────── -->
+    <div id="main">
+
+        <!-- Sidebar -->
+        <aside id="sidebar">
+
+            <!-- OSS Bucket -->
+            <section class="sb-section">
+                <div class="sb-head">
+                    <span class="sb-label">OSS Bucket</span>
+                    <button class="sb-icon-btn" id="refresh-btn" title="Refresh">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="1 4 1 10 7 10"/>
+                            <path d="M3.51 15a9 9 0 1 0 .49-4.77"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="oss-tree" class="sb-scroll">
+                    <div class="sb-loading"><div class="spinner"></div><span>Loading…</span></div>
+                </div>
+                <div class="sb-foot">
+                    <button class="btn-ghost" id="upload-btn">↑ Upload DWG</button>
+                    <button class="btn-danger" id="clear-bucket-btn" title="Delete all files in bucket">🗑</button>
+                    <input type="file" id="file-input" accept=".dwg,.zip" hidden>
+                </div>
+            </section>
+
+            <!-- Markups -->
+            <section class="sb-section sb-section--grow">
+                <div class="sb-head">
+                    <span class="sb-label">Markups</span>
+                    <span class="badge" id="markup-badge">0</span>
+                </div>
+                <div id="markup-list" class="sb-scroll sb-scroll--grow">
+                    <div class="sb-empty">Draw rectangles in the viewer,<br>then click each to capture.</div>
+                </div>
+                <div class="sb-foot">
+                    <button class="btn-accent" id="generate-pdf-btn" disabled>▶ Generate PDF</button>
+                </div>
+            </section>
+
+        </aside>
+
+        <!-- Viewer -->
+        <div id="viewer"></div>
+
     </div>
-    <div id="preview"></div>
-    <div id="overlay"></div>
-    <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.js"></script>
-    <script src="/main.js" type="module"></script>
+
+    <!-- ── DA Progress Panel (slides up) ──────────────────── -->
+    <div id="da-panel">
+        <div class="da-row da-row--top">
+            <div class="da-steps">
+                <span class="da-step" id="da-step-0">① Upload</span>
+                <span class="da-arrow">›</span>
+                <span class="da-step" id="da-step-1">② Import DWG</span>
+                <span class="da-arrow">›</span>
+                <span class="da-step" id="da-step-2">③ Plot PDF</span>
+                <span class="da-arrow">›</span>
+                <span class="da-step" id="da-step-3">④ Done</span>
+            </div>
+            <div class="da-actions" id="da-actions"></div>
+            <button class="da-close" id="da-close-btn" title="Dismiss">✕</button>
+        </div>
+        <div class="da-row da-row--bar">
+            <span class="da-txt" id="da-txt">Initializing…</span>
+            <div class="da-track">
+                <div class="da-fill" id="da-fill"></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.js"></script>
+<script src="/main.js" type="module"></script>
 </body>
 </html>

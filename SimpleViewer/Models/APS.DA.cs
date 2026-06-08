@@ -169,15 +169,19 @@ namespace SimpleViewer.Models
             var objectId = Encoding.UTF8.GetString(
                 Convert.FromBase64String(urn + new string('=', padding)));
 
+            // Derive shared stem: "in_{datetime}_{basename}.dwg" → "{datetime}_{basename}"
+            var objectKey = objectId[(objectId.LastIndexOf('/') + 1)..];
+            var stem      = Path.GetFileNameWithoutExtension(objectKey)[3..]; // strip "in_"
+
             // Upload markup JSON to bucket
             var markupJson = JsonSerializer.Serialize(new { markups });
-            var markupKey  = $"markups_{DateTime.UtcNow:yyyyMMddHHmmss}.json";
+            var markupKey  = $"markup_{stem}.json";
             await UploadModel(markupKey, new MemoryStream(Encoding.UTF8.GetBytes(markupJson)));
 
             // Signed URLs
             var inputDwgUrl  = await GetSignedUrlByObjectId(objectId, "read");
             var markupUrl    = await GetSignedUrl(_bucket, markupKey, "read");
-            var outputKey    = $"output_{DateTime.UtcNow:yyyyMMddHHmmss}.dwg";
+            var outputKey    = $"out_{stem}.dwg";
             var outputUrl    = await GetSignedUrl(_bucket, outputKey, "write");
 
             var body = new
@@ -212,7 +216,8 @@ namespace SimpleViewer.Models
             var nickname = await GetNickname();
 
             var inputUrl = await GetSignedUrl(_bucket, outputDwgKey, "read");
-            var pdfKey   = Path.ChangeExtension(outputDwgKey, ".pdf");
+            // "out_{stem}.dwg" → "pdf_{stem}.pdf"
+            var pdfKey   = "pdf_" + Path.GetFileNameWithoutExtension(outputDwgKey)[4..] + ".pdf";
             var pdfUrl   = await GetSignedUrl(_bucket, pdfKey, "write");
 
             var body = new

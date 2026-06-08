@@ -1,7 +1,15 @@
 // Accumulated markups from all EVENT_MARKUP_SELECTED events this session
 const _markups = [];
-export function getMarkups()  { return [..._markups]; }
-export function clearMarkups() { _markups.length = 0; }
+export function getMarkups()   { return [..._markups]; }
+export function clearMarkups() {
+    _markups.length = 0;
+    window.dispatchEvent(new CustomEvent('markup:updated', { detail: { count: 0 } }));
+}
+export function removeMarkup(id) {
+    const idx = _markups.findIndex(m => m.id === id);
+    if (idx >= 0) _markups.splice(idx, 1);
+    window.dispatchEvent(new CustomEvent('markup:updated', { detail: { count: _markups.length } }));
+}
 
 async function getAccessToken(callback) {
     try {
@@ -138,6 +146,7 @@ class MarkupSelector extends Autodesk.Viewing.Extension {
             else          _markups.push(markupData);
 
             console.log(`✓ Markup #${markup.id} collected (${_markups.length} total)`);
+            window.dispatchEvent(new CustomEvent('markup:updated', { detail: { count: _markups.length } }));
         });
 
         return true;
